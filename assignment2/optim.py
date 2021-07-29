@@ -152,3 +152,4 @@ def adam(x, dx, config=None):
     config['t'] = t
 
     return next_x, config
+

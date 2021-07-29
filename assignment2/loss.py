@@ -2,13 +2,11 @@ import numpy as np
 def svm_loss(x, y):
     """
     Computes the loss and gradient using for multiclass SVM classification.
-
     Inputs:
     - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
       class for the ith input.
     - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
       0 <= y[i] < C
-
     Returns a tuple of:
     - loss: Scalar giving the loss
     - dx: Gradient of the loss with respect to x
@@ -29,13 +27,11 @@ def svm_loss(x, y):
 def softmax_loss(x, y):
     """
     Computes the loss and gradient for softmax classification.
-
     Inputs:
     - x: Input data, of shape (N, C) where x[i, j] is the score for the jth
       class for the ith input.
     - y: Vector of labels, of shape (N,) where y[i] is the label for x[i] and
       0 <= y[i] < C
-
     Returns a tuple of:
     - loss: Scalar giving the loss
     - dx: Gradient of the loss with respect to x

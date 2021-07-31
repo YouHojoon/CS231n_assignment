@@ -76,20 +76,22 @@ class FullyConnectedNet(object):
             else:
               w = np.random.randn(prev_hidden_dim, hidden_dim) * weight_scale
           
-          if self.use_batchnorm:
+          if self.use_batchnorm and i < self.num_layers-1:
             gamma = np.ones_like(b) 
             beta = np.ones_like(b)
+            gamma_params_name = 'gamma'+str(i+1)
+            beta_params_name = 'beta'+str(i+1)
+
+            self.params[gamma_params_name] = gamma
+            self.params[beta_params_name] = beta
 
           prev_hidden_dim = hidden_dim
           w_params_name = 'w'+str(i+1)
           b_params_name = 'b'+str(i+1)
-          gamma_params_name = 'gamma'+str(i+1)
-          beta_params_name = 'beta'+str(i+1)
-
+          
           self.params[w_params_name] = w
           self.params[b_params_name] = b
-          self.params[gamma_params_name] = gamma
-          self.params[beta_params_name] = beta
+         
 
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -112,10 +114,6 @@ class FullyConnectedNet(object):
         self.bn_params = []
         if self.use_batchnorm:
             self.bn_params = [{'mode': 'train'} for i in range(self.num_layers - 1)]
-            for i,bn_param in enumerate(self.bn_params):
-              w_params_name = 'w'+str(i+1)
-              bn_param['beta'] = np.zeros((self.params[w_params_name].shape[1]))
-              bn_param['gamma'] = np.ones((self.params[w_params_name].shape[1]))
 
         # Cast all parameters to the correct datatype
         for k, v in self.params.items():
@@ -153,23 +151,31 @@ class FullyConnectedNet(object):
         # layer, etc.                                                              #
         ############################################################################
         cache_list = []
+        relu_cache_list = []
         bn_cache_list = []
 
+        out = None
         for i in range(self.num_layers):
             w = self.params['w'+str(i+1)]
             b = self.params['b'+str(i+1)]
             
-            if i ==0:
-              out,cache = affine_relu_forward(X,w,b)
-            elif i == self.num_layers -1:
+           
+            if i == self.num_layers -1:
               scores,cache = affine_forward(out,w,b)
+            
             else:
-              out,cache = affine_relu_forward(out,w,b)
+              if i ==0:
+                out,cache = affine_forward(X,w,b)
+              else:
+                out,cache = affine_forward(out,w,b)
 
-            if i != self.num_layers -1 and self.bn_params[i]['mode']=='train':
-              out,bn_cache = batchnorm_forward(out,self.params['gamma'+str(i+1)],self.params['beta'+str(i+1)],self.bn_params[i])
-              bn_cache_list.append(bn_cache)
-
+              if self.bn_params[i]['mode']=='train':
+                out,bn_cache = batchnorm_forward(out,self.params['gamma'+str(i+1)],self.params['beta'+str(i+1)],self.bn_params[i])
+                bn_cache_list.append(bn_cache)
+                
+              out,rn_cahce = relu_forward(out)
+              relu_cache_list.append(rn_cahce)
+            
             cache_list.append(cache)      
         ############################################################################
         #                             END OF YOUR CODE                             #
@@ -194,11 +200,10 @@ class FullyConnectedNet(object):
         # of 0.5 to simplify the expression for the gradient.                      #
         ############################################################################
         loss, dout = softmax_loss(scores,y)
+        dx = None
         for i in range(self.num_layers,0 ,-1):
             w_name = 'w'+str(i)
             b_name = 'b'+str(i)
-            gamma_name = 'gamma'+str(i)
-            beta_name = 'beta'+str(i)
 
             w = self.params[w_name]
            
@@ -206,11 +211,15 @@ class FullyConnectedNet(object):
             if i ==self.num_layers:
               dx,dw,db = affine_backward(dout,cache_list[i-1])
             else:
+              dx = relu_backward(dx,relu_cache_list[i-1])
               dx,dgamma,dbeta = batchnorm_backward(dx,bn_cache_list[i-1])
-              grads[gamma_name] = dgamma
-              grads[beta_name] = dbeta
+              dx,dw,db = affine_backward(dx,cache_list[i-1])
+              
+              gamma_name = 'gamma'+str(i)
+              beta_name = 'beta'+str(i)
 
-              dx,dw,db = affine_relu_backward(dx,cache_list[i-1]) 
+              grads[gamma_name] = dgamma
+              grads[beta_name] = dbeta 
 
             grads[w_name] = dw + self.reg * w / self.num_layers * 2
             grads[b_name] = db

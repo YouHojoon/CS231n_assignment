@@ -78,7 +78,7 @@ class FullyConnectedNet(object):
           
           if self.use_batchnorm and i < self.num_layers-1:
             gamma = np.ones_like(b) 
-            beta = np.ones_like(b)
+            beta = np.zeros_like(b)
             gamma_params_name = 'gamma'+str(i+1)
             beta_params_name = 'beta'+str(i+1)
 
@@ -169,7 +169,7 @@ class FullyConnectedNet(object):
               else:
                 out,cache = affine_forward(out,w,b)
 
-              if self.bn_params[i]['mode']=='train':
+              if self.use_batchnorm:
                 out,bn_cache = batchnorm_forward(out,self.params['gamma'+str(i+1)],self.params['beta'+str(i+1)],self.bn_params[i])
                 bn_cache_list.append(bn_cache)
                 
@@ -212,19 +212,25 @@ class FullyConnectedNet(object):
               dx,dw,db = affine_backward(dout,cache_list[i-1])
             else:
               dx = relu_backward(dx,relu_cache_list[i-1])
-              dx,dgamma,dbeta = batchnorm_backward(dx,bn_cache_list[i-1])
+              
+              if self.use_batchnorm:
+                dx,dgamma,dbeta = batchnorm_backward(dx,bn_cache_list[i-1])
+                gamma_name = 'gamma'+str(i)
+                beta_name = 'beta'+str(i)
+                
+                grads[gamma_name] = dgamma
+                grads[beta_name] = dbeta 
+
               dx,dw,db = affine_backward(dx,cache_list[i-1])
               
-              gamma_name = 'gamma'+str(i)
-              beta_name = 'beta'+str(i)
+             
 
-              grads[gamma_name] = dgamma
-              grads[beta_name] = dbeta 
+              
 
-            grads[w_name] = dw + self.reg * w / self.num_layers * 2
+            grads[w_name] = dw + self.reg * w 
             grads[b_name] = db
           
-            loss += self.reg*np.sum(w*w)/self.num_layers
+            loss += self.reg*np.sum(w*w) * 0.5
         ############################################################################
         #                             END OF YOUR CODE                             #
         ############################################################################
